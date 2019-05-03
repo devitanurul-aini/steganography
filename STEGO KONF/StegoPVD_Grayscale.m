@@ -1,0 +1,106 @@
+clc;
+clear all;
+close all;
+
+pesan=input('Masukkan Pesan : ','s');
+
+pesan=uint8(pesan); % pesan teks dijadikan angka
+panjang_pesan=length(pesan); % hitung panjang pesan
+
+% citra=imread('lena1.bmp'); %citra 1 512x512
+% citra=imread('Baboon.bmp'); %citra 1 512x512
+citra=imread('Cameraman.bmp'); % citra 3 256x256
+
+if size(citra,3)==3 % jika citranya RGB, jadikan Grayscale
+    citra=rgb2gray(citra);
+end
+
+[baris,kolom]=size(citra);
+stego=citra(:); % matrik citra dijadikan 1 baris
+panjang_stego=length(stego);
+
+% PESAN DIJADIKAN BINER
+bit_pesan=[];
+for i=1:panjang_pesan
+    biner=dec2bin(pesan(i),8);
+    bit_pesan=[bit_pesan biner];
+end
+panjang_bit_pesan=length(bit_pesan);
+ambil_bit_pesan=[];
+n=0;
+
+%===========PENYISIPAN PESAN=============
+% int c = 0;
+for i=1:2:panjang_stego
+    d=stego(i+1)-stego(i);
+    if 0<=d<=7; Lk=0; n=3; end
+    if 8<=d<=15; Lk=8; n=3; end
+    if 16<=d<=31; Lk=16; n=4; end
+    if 32<=d<=63; Lk=32; n=5; end
+    if 64<=d<=127; Lk=64; n=7; end
+    if 128<=d<=255; Lk=128; n=7; end
+    if n>length(bit_pesan)
+        n=length(bit_pesan);
+        break
+    end
+    ambil_bit_pesan=bit_pesan(1:n);
+    bit_pesan=bit_pesan(n+1:end);
+    
+    b=bin2dec(ambil_bit_pesan);
+    if d>=0; d1=Lk+b; 
+        else s1=-(Lk+b); 
+    end
+    m=d1-d; 
+    bawah=floor(m/2); 
+    atas=ceil(m/2);
+    if mod(m,2)==1, stego(i)=stego(i)-atas;
+        stego(i+1)=stego(i+1)+bawah;
+    end
+    if mod(m,2)==0, stego(i)=stego(i)-bawah;
+        stego(i+1)=stego(i+1)+atas;
+    end
+end
+
+stego=reshape(stego, [baris kolom]); % citra baris dijadikan matrik
+figure,
+subplot(1,2,1), imshow(citra), title('Citra Asli');
+subplot(1,2,2), imshow(stego), title('Citra Stego');
+
+%==============PERHITUNGAN MSE, PSNR DAN SSIM==============
+a=double(citra);
+b=double(stego);
+er=a-b;
+MSE=sum(sum(er.^2))/(baris*kolom)
+PSNR = 10*log10(255^2/MSE)
+PSNR = mean(PSNR)
+[mssim,ssim_map]=ssim_index(citra,stego);mssim
+BPP = panjang_bit_pesan/(baris*kolom)
+
+%==============EKSTRAKSI===============
+bit_pesan=[];
+ambil_bit_pesan=[];
+for i=1:2:panjang_stego
+    if length(bit_pesan)==panjang_bit_pesan,
+        break,
+    end
+    d=stego(i+1)-stego(i);
+    if 0<=d<=7; Lk=0; n=3; end
+    if 8<=d<=15; Lk=8; n=3; end
+    if 16<=d<=31; Lk=16; n=4; end
+    if 32<=d<=63; Lk=32; n=5; end
+    if 64<=d<=127; Lk=64; n=7; end
+    if 128<=d<=255; Lk=128; n=7; end
+    b=abs(d)-Lk;
+    ubah_b = dec2bin(b);
+    bit_pesan = [bit_pesan ubah_b];
+end
+pesan2=[];
+for i=1:8:panjang_bit_pesan
+    a=char(bin2dec(bit_pesan(1:8)));
+    pesan2=[pesan a];
+end
+pesan2=pesan2(1:end-1);
+disp(['HASIL EKSTRAKSI PESAN = ', pesan2])
+panjang_Pesan2=length(pesan2);
+disp('Panjang Pesan Ekstraksi = ')
+disp(panjang_Pesan2)
